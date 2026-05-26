@@ -17,7 +17,7 @@ fi
 # Check Node.js
 if ! command -v node &> /dev/null; then
   echo "[!] Node.js not found. Install it first:"
-  echo "  Ubuntu/Debian: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt install -y nodejs"
+  echo "  Ubuntu/Debian: curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs"
   echo "  Termux: pkg install nodejs"
   echo "  macOS: brew install node@22"
   exit 1
@@ -25,13 +25,10 @@ fi
 
 NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
 if [ "$NODE_VERSION" -lt 22 ]; then
-  echo "[!] Node.js $(node -v) detected — recommended >=22."
-  echo "  Upgrade with:"
-  echo "  Ubuntu/Debian: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt install -y nodejs"
-  echo "  Termux: pkg install nodejs"
-  echo "  macOS: brew upgrade node"
-  echo ""
-  echo "[*] Melanjutkan instalasi dengan Node $(node -v) — mungkin ada warning."
+  echo "[!] Node.js $(node -v) detected — upgrading to v22..."
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  apt install -y nodejs
+  echo "[✓] Node.js upgraded: $(node -v)"
 fi
 echo "[✓] Node.js $(node -v)"
 
@@ -44,7 +41,7 @@ elif command -v python &> /dev/null; then
 else
   echo "[!] Python not found. Install it first."
   echo "  Termux: pkg install python"
-  echo "  Ubuntu: sudo apt install -y python3"
+  echo "  Ubuntu: apt install -y python3"
   exit 1
 fi
 echo "[✓] $($PYTHON --version)"
