@@ -49,6 +49,7 @@ echo "[✓] $($PYTHON --version)"
 # Install Node dependencies
 echo ""
 echo "[*] Installing Node.js dependencies..."
+rm -rf node_modules package-lock.json
 npm cache clean --force
 npm install
 
