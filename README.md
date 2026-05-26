@@ -37,7 +37,7 @@ Cek di `package.json` → `"engines": { "node": ">=22" }`.
 ### 4. Clone repo
 ```bash
 git clone https://github.com/az925-crypto/Agent-x-.git
-cd Agent-x-.git
+cd Agent-x-
 ```
 
 ### 5. Install semua (1 perintah)
