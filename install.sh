@@ -52,6 +52,7 @@ echo "[✓] $($PYTHON --version)"
 # Install Node dependencies
 echo ""
 echo "[*] Installing Node.js dependencies..."
+npm cache clean --force
 npm install
 
 # Install Python dependencies (instagrapi)
