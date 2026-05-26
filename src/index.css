@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --animate-fade-in: fadeIn 0.5s ease-out forwards;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar for terminal */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #020617; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #083344;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #0e7490;
+}
