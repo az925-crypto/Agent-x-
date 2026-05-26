@@ -25,12 +25,13 @@ fi
 
 NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
 if [ "$NODE_VERSION" -lt 22 ]; then
-  echo "[!] Node.js $(node -v) detected — but Node.js >=22 is required."
+  echo "[!] Node.js $(node -v) detected — recommended >=22."
   echo "  Upgrade with:"
   echo "  Ubuntu/Debian: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt install -y nodejs"
   echo "  Termux: pkg install nodejs"
   echo "  macOS: brew upgrade node"
-  exit 1
+  echo ""
+  echo "[*] Melanjutkan instalasi dengan Node $(node -v) — mungkin ada warning."
 fi
 echo "[✓] Node.js $(node -v)"
 
