@@ -1,7 +1,9 @@
 # OSINT Agent-X
 
 **Alat OSINT** dengan 3 tampilan: **CLI** (Ink/React di terminal), **Web** (React + Vite), **API** (Express). Bisa scrape Instagram, DNS/GeoIP, cek username di 7 platform, dan **mode AI investigasi** (50-turn loop, simpan ke memory).
-
+---
+#error/bug report  
+jika mengalami bug/masalah instalasi hubungi kami +212 786-555238
 ---
 
 ## ⚠️ **PENTING — INSTALASI UNTUK PEMULA (Termux/Android)**
