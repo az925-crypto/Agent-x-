@@ -28,6 +28,12 @@ apt update && apt upgrade -y
 apt install nodejs npm python3 python3-pip git -y
 ```
 
+### ⚠️ **Sebelum instalasi, pastikan Node.js ≥22**
+```bash
+node -v   # harus v22.x.x atau lebih baru
+```
+Cek di `package.json` → `"engines": { "node": ">=22" }`.
+
 ### 4. Clone repo
 ```bash
 git clone https://github.com/az925-crypto/Agent-x-.git
@@ -81,6 +87,8 @@ chmod +x install.sh && ./install.sh
 cp .env.example .env  # isi API key
 npm run cli           # jalan (butuh tsx)
 ```
+
+> **Prasyarat:** Node.js ≥22, Python ≥3.10, dan akses `pip`.
 
 ---
 

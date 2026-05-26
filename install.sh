@@ -22,6 +22,16 @@ if ! command -v node &> /dev/null; then
   echo "  macOS: brew install node@22"
   exit 1
 fi
+
+NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
+if [ "$NODE_VERSION" -lt 22 ]; then
+  echo "[!] Node.js $(node -v) detected — but Node.js >=22 is required."
+  echo "  Upgrade with:"
+  echo "  Ubuntu/Debian: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt install -y nodejs"
+  echo "  Termux: pkg install nodejs"
+  echo "  macOS: brew upgrade node"
+  exit 1
+fi
 echo "[✓] Node.js $(node -v)"
 
 # Check Python
@@ -46,8 +56,7 @@ npm install
 # Install Python dependencies (instagrapi)
 echo ""
 echo "[*] Installing Python dependencies (instagrapi)..."
-$PYTHON -m pip install --upgrade pip 2>/dev/null || true
-$PYTHON -m pip install -r tools/ig/requirements.txt 2>&1 | tail -1
+$PYTHON -m pip install --break-system-packages -r tools/ig/requirements.txt 2>&1
 
 # Build CLI bundle (.mjs)
 echo ""
