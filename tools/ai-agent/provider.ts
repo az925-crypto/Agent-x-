@@ -146,8 +146,8 @@ class OpenAICompatibleClient implements AIClient {
 
   private convertContents(contents: unknown[]): { role: string; content?: string; tool_calls?: unknown[]; tool_call_id?: string; reasoning_content?: string }[] {
     const messages: { role: string; content?: string; tool_calls?: unknown[]; tool_call_id?: string; reasoning_content?: string }[] = [];
-    // Track tool_call_ids by function name so tool responses can match the exact ID
-    const lastToolCallIds = new Map<string, string>();
+    // Queue of tool_call_ids per function name — supports same tool called multiple times
+    const toolCallIdQueue = new Map<string, string[]>();
 
     for (const msg of contents as { role: string; parts?: { text?: string; functionCall?: { name: string; args: Record<string, unknown> }; functionResponse?: { name: string; response: { output: unknown } } }[]; reasoningContent?: string }[]) {
       const parts = msg.parts || [];
@@ -158,10 +158,12 @@ class OpenAICompatibleClient implements AIClient {
       if (functionCallParts.length > 0) {
         // Group ALL function calls from one response into ONE assistant message
         // This is REQUIRED for DeepSeek/Zen when reasoning_content is present
-        lastToolCallIds.clear();
+        toolCallIdQueue.clear();
         const toolCalls = functionCallParts.map((p, i) => {
           const id = `call_${p.functionCall!.name}_${i}`;
-          lastToolCallIds.set(p.functionCall!.name, id);
+          const ids = toolCallIdQueue.get(p.functionCall!.name) || [];
+          ids.push(id);
+          toolCallIdQueue.set(p.functionCall!.name, ids);
           return {
             id,
             type: 'function' as const,
@@ -181,7 +183,8 @@ class OpenAICompatibleClient implements AIClient {
         messages.push(assistantMsg);
       } else if (functionResponsePart?.functionResponse) {
         const fr = functionResponsePart.functionResponse;
-        const toolCallId = lastToolCallIds.get(fr.name) || `call_${fr.name}_0`;
+        const ids = toolCallIdQueue.get(fr.name);
+        const toolCallId = ids && ids.length > 0 ? ids.shift()! : `call_${fr.name}_0`;
         messages.push({
           role: 'tool',
           tool_call_id: toolCallId,
