@@ -2,6 +2,26 @@ import { readFile, writeFile, appendFile, mkdir, rm, readdir, stat, realpath } f
 import { existsSync } from 'fs';
 import { spawn } from 'child_process';  // FIX #1: exec → spawn (no shell)
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Resolve project root: tools/terminal/index.ts → ../../
+const PROJECT_ROOT = path.basename(path.dirname(__dirname)) === 'tools'
+  ? path.resolve(__dirname, '..', '..')
+  : path.resolve(__dirname, '..');
+
+// Directories where AI can write/delete/run commands WITHOUT user confirmation
+const AUTO_APPROVE_DIRS = [
+  path.join(PROJECT_ROOT, 'tools', 'custom'),
+];
+
+function isInAutoApproveZone(resolvedPath: string): boolean {
+  return AUTO_APPROVE_DIRS.some(dir =>
+    resolvedPath === dir || resolvedPath.startsWith(dir + path.sep)
+  );
+}
 
 // FIX #10: headless mode added to ToolContext
 export interface ToolContext {
@@ -167,8 +187,10 @@ export async function writeFileTool(filePath: string, content: string, ctx: Tool
   }
   const exists = existsSync(resolved);
   const action = exists ? 'overwrite' : 'create';
-  const ok = await ctx.confirm(`Write ${action} ${resolved}? (${content.length} chars)`);
-  if (!ok) return { skipped: true, reason: 'User declined' };
+  if (!isInAutoApproveZone(resolved)) {
+    const ok = await ctx.confirm(`Write ${action} ${resolved}? (${content.length} chars)`);
+    if (!ok) return { skipped: true, reason: 'User declined' };
+  }
   await writeFile(resolved, content, 'utf-8');
   return { written: true, path: resolved, action, chars: content.length };
 }
@@ -182,8 +204,10 @@ export async function appendFileTool(filePath: string, content: string, ctx: Too
   if (isRestrictedFile(resolved)) {
     return { error: `Access denied: cannot append to "${path.basename(resolved)}".` };
   }
-  const ok = await ctx.confirm(`Append to ${resolved}? (${content.length} chars)`);
-  if (!ok) return { skipped: true, reason: 'User declined' };
+  if (!isInAutoApproveZone(resolved)) {
+    const ok = await ctx.confirm(`Append to ${resolved}? (${content.length} chars)`);
+    if (!ok) return { skipped: true, reason: 'User declined' };
+  }
   await appendFile(resolved, content + '\n', 'utf-8');
   return { appended: true, path: resolved, chars: content.length };
 }
@@ -194,8 +218,10 @@ export async function makeDirTool(dirPath: string, ctx: ToolContext) {
   }
   const resolved = path.resolve(ctx.cwd, dirPath);
   await assertInsideCwd(resolved, ctx);
-  const ok = await ctx.confirm(`Create directory ${resolved}?`);
-  if (!ok) return { skipped: true, reason: 'User declined' };
+  if (!isInAutoApproveZone(resolved)) {
+    const ok = await ctx.confirm(`Create directory ${resolved}?`);
+    if (!ok) return { skipped: true, reason: 'User declined' };
+  }
   await mkdir(resolved, { recursive: true });
   return { created: true, path: resolved };
 }
@@ -211,8 +237,10 @@ export async function deleteFileTool(filePath: string, ctx: ToolContext) {
   }
   const s = await stat(resolved);
   const label = s.isDirectory() ? 'directory' : 'file';
-  const ok = await ctx.confirm(`Delete ${label} ${resolved}?`);
-  if (!ok) return { skipped: true, reason: 'User declined' };
+  if (!isInAutoApproveZone(resolved)) {
+    const ok = await ctx.confirm(`Delete ${label} ${resolved}?`);
+    if (!ok) return { skipped: true, reason: 'User declined' };
+  }
   await rm(resolved, { recursive: true, force: true });
   return { deleted: true, path: resolved, type: label };
 }
@@ -240,9 +268,29 @@ const READONLY_PREFIXES = [
   'git log', 'git status', 'git diff', 'git show', 'git branch',
 ];
 
+// Command patterns that target the scratch zone (tools/custom/) — auto-approved
+// because they only affect files the AI itself created
+function getAutoApproveCommandPrefixes(): string[] {
+  return AUTO_APPROVE_DIRS.map(dir => {
+    const rel = path.relative(PROJECT_ROOT, dir);
+    return [`rm ${rel}/`, `cp ${rel}/`, `mv ${rel}/`, `ls ${rel}/`, `cat ${rel}/`];
+  }).flat();
+}
+
 function isReadOnlyCommand(tokens: string[]): boolean {
   const full = tokens.join(' ');
   return READONLY_PREFIXES.some(prefix => full.startsWith(prefix));
+}
+
+function isAutoApprovedCommand(tokens: string[]): boolean {
+  const full = tokens.join(' ');
+  const prefixes = getAutoApproveCommandPrefixes();
+  if (prefixes.some(prefix => full.startsWith(prefix))) return true;
+  // Also check if any argument references an auto-approve dir path
+  return tokens.slice(1).some(t => {
+    const resolved = path.resolve(PROJECT_ROOT, t);
+    return isInAutoApproveZone(resolved);
+  });
 }
 
 // FIX #1: Simple tokenizer that handles quoted strings (for spawn without shell)
@@ -303,8 +351,8 @@ export async function runCommandTool(command: string, ctx: ToolContext) {
     return { blocked: true, reason: 'Command execution disabled in headless mode.' };
   }
 
-  // Auto-approve read-only commands (scraping, analysis, read-only shell)
-  if (!isReadOnlyCommand(tokens)) {
+  // Auto-approve read-only or scratch-zone commands (no user confirm needed)
+  if (!isReadOnlyCommand(tokens) && !isAutoApprovedCommand(tokens)) {
     const ok = await ctx.confirm(`Run command: ${command}`);
     if (!ok) return { skipped: true, reason: 'User declined' };
   }
@@ -415,7 +463,7 @@ export const terminalTools: ToolDef[] = [
   },
   {
     name: 'write_file',
-    description: 'Write content to a file. Requires user confirmation.',
+    description: 'Write content to a file. Requires user confirmation (auto-approved in tools/custom/).',
     parameters: {
       type: 'object',
       properties: {

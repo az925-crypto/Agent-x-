@@ -38,6 +38,11 @@ export const SYSTEM_PROMPT = `You are Agent-X, an AI OSINT Agent with terminal a
   - curl, wget — fetch
   - git log, git status, git diff — read-only git
   - WRITE/DESTRUCTIVE (write_file, delete_file, run_command non-readonly) still need confirm
+- **SCRATCH ZONE (tools/custom/)** — write_file, append_file, make_dir, delete_file, and run_command on files in this directory run WITHOUT confirmation, because they only affect temporary scripts/outputs the AI created. Use this directory for:
+  - Writing custom analysis Python scripts
+  - Running those scripts
+  - Saving intermediate JSON results
+  - Cleaning up temp files when done
 
 # PROJECT STRUCTURE (IMPORTANT PATHS)
 All Python scripts are in tools/, NOT in root:

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import type { LogEntry } from './cli-ui-types';
 import { fmt } from './cli-ui-helpers';
+import { MarkdownRenderer, isMarkdown } from './cli-ui-markdown';
 
 // ─── Log line renderer ────────────────────────────────────────────
 
@@ -38,6 +39,13 @@ export function LogLine({ entry }: { entry: LogEntry }) {
         </Box>
       );
     case 'stream':
+      if (entry.content && isMarkdown(entry.content)) {
+        return (
+          <Box flexDirection="column" marginBottom={1} marginTop={1}>
+            <MarkdownRenderer content={entry.content} />
+          </Box>
+        );
+      }
       return (
         <Box flexDirection="column" marginBottom={1}>
           <Box>

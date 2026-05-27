@@ -146,6 +146,8 @@ class OpenAICompatibleClient implements AIClient {
 
   private convertContents(contents: unknown[]): { role: string; content?: string; tool_calls?: unknown[]; tool_call_id?: string; reasoning_content?: string }[] {
     const messages: { role: string; content?: string; tool_calls?: unknown[]; tool_call_id?: string; reasoning_content?: string }[] = [];
+    // Track tool_call_ids by function name so tool responses can match the exact ID
+    const lastToolCallIds = new Map<string, string>();
 
     for (const msg of contents as { role: string; parts?: { text?: string; functionCall?: { name: string; args: Record<string, unknown> }; functionResponse?: { name: string; response: { output: unknown } } }[]; reasoningContent?: string }[]) {
       const parts = msg.parts || [];
@@ -156,16 +158,22 @@ class OpenAICompatibleClient implements AIClient {
       if (functionCallParts.length > 0) {
         // Group ALL function calls from one response into ONE assistant message
         // This is REQUIRED for DeepSeek/Zen when reasoning_content is present
-        const assistantMsg: { role: string; tool_calls: { id: string; type: string; function: { name: string; arguments: string } }[]; reasoning_content?: string } = {
-          role: 'assistant',
-          tool_calls: functionCallParts.map((p, i) => ({
-            id: `call_${p.functionCall!.name}_${i}`,
-            type: 'function',
+        lastToolCallIds.clear();
+        const toolCalls = functionCallParts.map((p, i) => {
+          const id = `call_${p.functionCall!.name}_${i}`;
+          lastToolCallIds.set(p.functionCall!.name, id);
+          return {
+            id,
+            type: 'function' as const,
             function: {
               name: p.functionCall!.name,
               arguments: JSON.stringify(p.functionCall!.args),
             },
-          })),
+          };
+        });
+        const assistantMsg: { role: string; tool_calls: typeof toolCalls; reasoning_content?: string } = {
+          role: 'assistant',
+          tool_calls: toolCalls,
         };
         if (msg.reasoningContent) {
           assistantMsg.reasoning_content = msg.reasoningContent;
@@ -173,9 +181,10 @@ class OpenAICompatibleClient implements AIClient {
         messages.push(assistantMsg);
       } else if (functionResponsePart?.functionResponse) {
         const fr = functionResponsePart.functionResponse;
+        const toolCallId = lastToolCallIds.get(fr.name) || `call_${fr.name}_0`;
         messages.push({
           role: 'tool',
-          tool_call_id: `call_${fr.name}`,
+          tool_call_id: toolCallId,
           content: JSON.stringify(fr.response.output),
         });
       } else if (textParts) {
